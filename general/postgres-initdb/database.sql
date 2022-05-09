@@ -1,0 +1,4 @@
+CREATE DATABASE "rider";
+CREATE DATABASE "customer";
+CREATE DATABASE "parcel";
+CREATE DATABASE "service-area";

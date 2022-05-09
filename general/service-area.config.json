@@ -1,0 +1,28 @@
+{
+    "server": {
+      "service": "service-area-service",
+      "port": ":1234",
+      "description": "Stores service-areas of the Bikepack system."
+    },
+    "rabbitMQ": {
+      "host": "rabbitmq",
+      "port": 5672,
+      "user": "user",
+      "password": "password",
+      "exchange": "topics"
+    },
+    "database": {
+      "host": "postgres",
+      "port": 5432,
+      "user": "user",
+      "password": "password",
+      "database": "service-area",
+      "debug": true
+    },
+    "tracing": {
+      "host": "jaeger",
+      "port": 6831
+    }
+  }
+  
+  

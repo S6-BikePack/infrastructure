@@ -1,0 +1,65 @@
+version: '3'
+
+services:
+  database:
+    container_name: 'postgres-${SERVICEAREA_IDENTIFIER}'
+    image: postgis/postgis
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "${DB_PORT}:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER:-user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+    command: ["postgres", "-c", "log_statement=all", "-c", "log_destination=stderr"]
+    volumes:
+      - ${DB_INIT:-./service-areas/postgres-initdb}:/docker-entrypoint-initdb.d/
+      
+  delivery-service:
+    depends_on:
+      database:
+        condition: service_healthy
+    container_name: "delivery-service-${SERVICEAREA_IDENTIFIER}"
+    image: ghcr.io/s6-bikepack/delivery-service:main
+    volumes:
+      - ./service-areas/delivery-service.config.json:/config/config.json
+    environment:
+      SERVICEAREA.ID: ${SERVICEAREA_ID}
+      SERVICEAREA.IDENTIFIER: "${SERVICEAREA_IDENTIFIER}"
+      DATABASE.DATABASE: "delivery"
+      DATABASE.HOST:  'postgres-${SERVICEAREA_IDENTIFIER}'
+      config: ./config/config
+    labels:
+      - traefik.http.routers.delivery-${SERVICEAREA_IDENTIFIER}-rest.rule=PathPrefix(`/api/deliveries`) && Query(`service_area=${SERVICEAREA_IDENTIFIER}`)
+      - traefik.http.routers.delivery-${SERVICEAREA_IDENTIFIER}-rest.entrypoints=web
+      - traefik.http.routers.delivery-${SERVICEAREA_IDENTIFIER}-rest.middlewares=serviceheaders, traefik-forward-auth
+
+  parcel-service:
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      SERVICEAREA.ID: ${SERVICEAREA_ID}
+      SERVICEAREA.IDENTIFIER: "${SERVICEAREA_IDENTIFIER}"
+      DATABASE.DATABASE: "parcel"
+      DATABASE.HOST:  'postgres-${SERVICEAREA_IDENTIFIER}'
+      config: ./config/config
+    container_name: "parcel-service-${SERVICEAREA_IDENTIFIER}"
+    volumes:
+      - ./service-areas/parcel-service.config.json:/config/config.json
+    image: ghcr.io/s6-bikepack/parcel-service:main
+    labels:
+      - traefik.http.routers.parcel-${SERVICEAREA_IDENTIFIER}-rest.rule=PathPrefix(`/api/parcels`) && Query(`service_area=${SERVICEAREA_IDENTIFIER}`)
+      - traefik.http.routers.parcel-${SERVICEAREA_IDENTIFIER}-rest.entrypoints=web
+      - traefik.http.routers.parcel-${SERVICEAREA_IDENTIFIER}-rest.middlewares=serviceheaders, traefik-forward-auth
+      - traefik.http.routers.customer-parcel-${SERVICEAREA_IDENTIFIER}-rest.rule=Path(`/api/customers/{id}/parcels`) && Query(`service_area=${SERVICEAREA_IDENTIFIER}`)
+      - traefik.http.routers.customer-parcel-${SERVICEAREA_IDENTIFIER}-rest.entrypoints=web
+      - traefik.http.routers.customer-parcel-${SERVICEAREA_IDENTIFIER}-rest.middlewares=serviceheaders, traefik-forward-auth
+
+networks:
+  default:
+    external:
+      name: bikepack
