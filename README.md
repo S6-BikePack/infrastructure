@@ -82,3 +82,30 @@ using docker-compose:
 docker-compose -f ./docker-compose.area-specific.yml pull && \
 docker compose  --env-file .\service-areas\ehv\docker-compose.env -f .\docker-compose.area-specific.yml -p bikepack-ehv up --build --no-recreate
 ```
+
+### ➕ Adding additional service-areas
+
+This repository comes with two service-areas (Eindhoven, Amsterdam). To add additional service-areas you need to do the following:
+
+#### Create docker compose .env file
+
+The area specific containers run with the config files found under the ./service-areas folder. Using docker-compose .env files certain configurations are overridden to specify which service-area the container is part of. To create a new service-area create a .env file with the following fields:
+
+```env
+SERVICEAREA_ID=1                                            # ID of the service area
+SERVICEAREA_IDENTIFIER=ehv                                  # Identifier used for the service area
+
+DB_USER=user                                                # Database username
+DB_PASSWORD=password                                        # Database password
+DB_PORT=5431                                                # Database port
+DB_INIT=./infrastructure/service-areas/postgres-initdb      # Database initialization scripts
+```
+
+After you have your .env file you can run the new containers using docker-compose. For this use the following commands:
+
+```bash
+docker-compose -f ./docker-compose.area-specific.yml pull && \
+docker compose  --env-file {YOUR_ENV_FILE_PATH} -f .\docker-compose.area-specific.yml -p bikepack-{SERVICEAREA_IDENTIFIER} up --build --no-recreate
+```
+
+This will launch the parcel and delivery service for this service-area and the required database. The new endpoints are automatically added to the API-gateway.
